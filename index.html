@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no">
-<title>AR Selfie Marker Photo Frame</title>
+<title>AR Selfie Marker</title>
 
 <script src="https://unpkg.com/three@0.150.1/build/three.min.js"></script>
 <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
@@ -26,50 +26,6 @@ width:100%;
 height:100%;
 }
 
-#captureBtn{
-position:fixed;
-bottom:24px;
-left:50%;
-transform:translateX(-50%);
-z-index:20;
-border:none;
-border-radius:18px;
-padding:16px 34px;
-font-size:22px;
-font-weight:bold;
-color:#fff;
-background:linear-gradient(135deg,#ff5ca9,#ff84d2);
-box-shadow:0 8px 20px rgba(0,0,0,.35);
-}
-
-#resetBtn{
-position:fixed;
-top:18px;
-right:18px;
-z-index:20;
-border:none;
-border-radius:14px;
-padding:12px 18px;
-font-size:15px;
-font-weight:bold;
-color:#fff;
-background:rgba(0,0,0,.55);
-backdrop-filter:blur(6px);
-}
-
-#guide{
-position:fixed;
-top:20px;
-left:20px;
-right:20px;
-text-align:center;
-z-index:20;
-color:#fff;
-font-size:16px;
-font-weight:bold;
-text-shadow:0 2px 8px rgba(0,0,0,.6);
-}
-
 #loading{
 position:fixed;
 inset:0;
@@ -79,7 +35,38 @@ justify-content:center;
 background:#000;
 color:#fff;
 font-size:18px;
-z-index:99;
+z-index:50;
+text-align:center;
+padding:20px;
+}
+
+#guide{
+position:fixed;
+top:20px;
+left:15px;
+right:15px;
+text-align:center;
+color:#fff;
+font-size:16px;
+font-weight:bold;
+z-index:20;
+text-shadow:0 2px 8px rgba(0,0,0,.7);
+}
+
+#captureBtn{
+position:fixed;
+bottom:25px;
+left:50%;
+transform:translateX(-50%);
+z-index:20;
+border:none;
+border-radius:16px;
+padding:15px 30px;
+font-size:20px;
+font-weight:bold;
+color:#fff;
+background:linear-gradient(135deg,#ff5ca9,#ff84d2);
+box-shadow:0 8px 20px rgba(0,0,0,.28);
 }
 
 #flash{
@@ -97,15 +84,14 @@ z-index:100;
 
 <div id="ar-container"></div>
 
-<div id="loading">Opening Selfie AR...</div>
+<div id="loading">Opening Selfie Camera...</div>
 <div id="guide">マーカーを前カメラに映してください</div>
 <div id="flash"></div>
 
-<button id="resetBtn">↺ Scan</button>
 <button id="captureBtn">📸 撮影</button>
 
 <script>
-let renderer, scene, camera, mascot, mindarThree;
+let renderer, scene, camera, mascot;
 
 window.addEventListener("load", startAR);
 
@@ -113,27 +99,46 @@ async function startAR(){
 
 try{
 
-mindarThree = new window.MINDAR.IMAGE.MindARThree({
+const mindarThree = new window.MINDAR.IMAGE.MindARThree({
 container: document.querySelector("#ar-container"),
-imageTargetSrc: "./targets.mind",
-uiScanning: false,
-uiLoading: false,
-uiError: false,
-videoSettings:{
-facingMode:"user"
-}
+imageTargetSrc:"./targets.mind",
+uiScanning:false,
+uiLoading:false,
+uiError:false,
+maxTrack:1,
+filterMinCF:0.0001,
+filterBeta:0.01
 });
 
 renderer = mindarThree.renderer;
 scene = mindarThree.scene;
 camera = mindarThree.camera;
 
+/* FORÇA SELFIE CAMERA */
+await mindarThree.start();
+
+/* troca manualmente para frontal */
+const video = document.querySelector("video");
+
+const stream = await navigator.mediaDevices.getUserMedia({
+video:{
+facingMode:{ exact:"user" },
+width:{ ideal:1280 },
+height:{ ideal:720 }
+},
+audio:false
+});
+
+video.srcObject = stream;
+await video.play();
+
+/* espelho selfie */
+video.style.transform = "scaleX(-1)";
+video.style.objectFit = "cover";
+
 renderer.preserveDrawingBuffer = true;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 renderer.setSize(window.innerWidth,window.innerHeight);
-
-/* selfie espelhado */
-renderer.domElement.style.transform = "scaleX(-1)";
 
 const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.2);
 scene.add(light);
@@ -149,17 +154,14 @@ side:THREE.DoubleSide
 });
 
 mascot = new THREE.Mesh(
-new THREE.PlaneGeometry(1.2,2.5),
+new THREE.PlaneGeometry(1.1,2.4),
 material
 );
 
-/* posição acima do marcador */
 mascot.position.set(0,1.15,0);
 
 const anchor = mindarThree.addAnchor(0);
 anchor.group.add(mascot);
-
-await mindarThree.start();
 
 document.getElementById("loading").style.display="none";
 
@@ -173,18 +175,17 @@ renderer.render(scene,camera);
 
 });
 
-}catch(err){
+}catch(error){
 
 document.getElementById("loading").innerHTML =
-"Failed to start.<br>Allow camera permission.";
+"Selfie camera failed.<br>Use HTTPS + allow camera.";
 
-console.error(err);
+console.error(error);
 }
 }
 
-/* FLASH */
+/* FOTO */
 function flashEffect(){
-
 const flash = document.getElementById("flash");
 
 flash.style.transition="none";
@@ -196,7 +197,6 @@ flash.style.opacity="0";
 },40);
 }
 
-/* FOTO */
 function takePhoto(){
 
 flashEffect();
@@ -206,39 +206,27 @@ renderer.render(scene,camera);
 const glCanvas = renderer.domElement;
 const video = document.querySelector("video");
 
-if(!video || !glCanvas) return;
-
 const output = document.createElement("canvas");
 output.width = glCanvas.width;
 output.height = glCanvas.height;
 
 const ctx = output.getContext("2d");
 
-/* selfie */
+/* selfie espelhada */
 ctx.save();
 ctx.scale(-1,1);
 ctx.drawImage(video,-output.width,0,output.width,output.height);
 ctx.restore();
 
-/* personagem */
 ctx.drawImage(glCanvas,0,0,output.width,output.height);
 
 const link = document.createElement("a");
-link.download = "ar-selfie-photo.jpg";
+link.download = "ar-selfie.jpg";
 link.href = output.toDataURL("image/jpeg",0.95);
 link.click();
 }
 
-/* RESET */
-function resetTracking(){
-if(mindarThree){
-mindarThree.stop();
-startAR();
-}
-}
-
 document.getElementById("captureBtn").addEventListener("click",takePhoto);
-document.getElementById("resetBtn").addEventListener("click",resetTracking);
 
 window.addEventListener("resize",()=>{
 if(renderer){
