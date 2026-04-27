@@ -60,7 +60,6 @@ text-shadow:0 2px 8px rgba(0,0,0,.75);
 line-height:1.5;
 }
 
-/* RESET */
 #resetBtn{
 position:fixed;
 bottom:36px;
@@ -78,7 +77,6 @@ display:none;
 cursor:pointer;
 }
 
-/* BOTÃO FOTO */
 #captureBtn{
 position:fixed;
 bottom:26px;
@@ -98,7 +96,6 @@ cursor:pointer;
 transform:translateX(-50%) scale(.92);
 }
 
-/* aro vermelho */
 #captureBtn .outer-ring{
 position:absolute;
 inset:0;
@@ -106,7 +103,6 @@ border-radius:50%;
 background:#ff0000;
 }
 
-/* branco fino */
 #captureBtn .outer-ring::after{
 content:"";
 position:absolute;
@@ -115,7 +111,6 @@ border-radius:50%;
 background:#fff;
 }
 
-/* bola interna maior */
 #captureBtn .inner-red{
 position:absolute;
 inset:12px;
@@ -161,9 +156,6 @@ let selfieMode = false;
 
 window.addEventListener("load", startScanner);
 
-/* =========================
-SCAN MODE
-========================= */
 async function startScanner(){
 
 try{
@@ -174,9 +166,7 @@ imageTargetSrc:"./targets.mind",
 uiScanning:false,
 uiLoading:false,
 uiError:false,
-videoSettings:{
-facingMode:{ideal:"environment"}
-}
+videoSettings:{ facingMode:{ideal:"environment"} }
 });
 
 renderer = scanAR.renderer;
@@ -186,8 +176,7 @@ camera = scanAR.camera;
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 
-const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.3);
-scene.add(light);
+scene.add(new THREE.HemisphereLight(0xffffff,0xbbbbff,1.3));
 
 const texture = await new THREE.TextureLoader().loadAsync("./anime-mascot.png");
 texture.encoding = THREE.sRGBEncoding;
@@ -221,27 +210,22 @@ loading.innerHTML="カメラエラー";
 }
 }
 
-/* =========================
-SELFIE MODE
-========================= */
 async function enterSelfieMode(){
 
 if(selfieMode) return;
 selfieMode = true;
 
-guide.innerHTML =
-"② キャラクターと一緒に写真を撮ってください";
+guide.innerHTML="② キャラクターと一緒に写真を撮ってください";
 
 await scanAR.stop();
 
-app.innerHTML = "";
+app.innerHTML="";
 
-/* selfie */
 selfieVideo = document.createElement("video");
-selfieVideo.autoplay = true;
-selfieVideo.playsInline = true;
-selfieVideo.muted = true;
-selfieVideo.style.transform = "scaleX(-1)";
+selfieVideo.autoplay=true;
+selfieVideo.playsInline=true;
+selfieVideo.muted=true;
+selfieVideo.style.transform="scaleX(-1)";
 app.appendChild(selfieVideo);
 
 const stream = await navigator.mediaDevices.getUserMedia({
@@ -253,10 +237,9 @@ height:{ideal:720}
 audio:false
 });
 
-selfieVideo.srcObject = stream;
+selfieVideo.srcObject=stream;
 await selfieVideo.play();
 
-/* renderer */
 renderer = new THREE.WebGLRenderer({
 alpha:true,
 antialias:true,
@@ -278,14 +261,14 @@ innerWidth/innerHeight,
 100
 );
 
-camera.position.z = 9;
+camera.position.z=9;
 
-const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.4);
-scene.add(light);
+scene.add(new THREE.HemisphereLight(0xffffff,0xbbbbff,1.4));
 
-/* PERSONAGEM MAIS DIREITA E MAIS BAIXO */
 scene.add(mascot);
-mascot.scale.set(1.65,1.65,1.65);
+
+/* 50% MENOR */
+mascot.scale.set(0.825,0.825,0.825);
 mascot.position.set(-0.75,-1.10,0);
 
 captureBtn.style.display="block";
@@ -294,24 +277,21 @@ resetBtn.style.display="block";
 animateSelfie();
 }
 
-/* LOOP */
 function animateSelfie(){
 
 requestAnimationFrame(animateSelfie);
 
 if(!selfieMode) return;
 
-mascot.position.y =
+mascot.position.y=
 -1.10 + Math.sin(Date.now()*0.002)*0.04;
 
 renderer.render(scene,camera);
 }
 
-/* FLASH */
 function flash(){
 
-const el = document.getElementById("flash");
-
+const el=document.getElementById("flash");
 el.style.transition="none";
 el.style.opacity="0.95";
 
@@ -321,37 +301,36 @@ el.style.opacity="0";
 },40);
 }
 
-/* FOTO */
 async function takePhoto(){
 
 flash();
 
-const out = document.createElement("canvas");
-out.width = innerWidth;
-out.height = innerHeight;
+const out=document.createElement("canvas");
+out.width=innerWidth;
+out.height=innerHeight;
 
-const ctx = out.getContext("2d");
+const ctx=out.getContext("2d");
 
-const vw = selfieVideo.videoWidth;
-const vh = selfieVideo.videoHeight;
-const cw = out.width;
-const ch = out.height;
+const vw=selfieVideo.videoWidth;
+const vh=selfieVideo.videoHeight;
+const cw=out.width;
+const ch=out.height;
 
-const vr = vw/vh;
-const cr = cw/ch;
+const vr=vw/vh;
+const cr=cw/ch;
 
 let sx,sy,sw,sh;
 
-if(vr > cr){
-sh = vh;
-sw = vh*cr;
-sx = (vw-sw)/2;
-sy = 0;
+if(vr>cr){
+sh=vh;
+sw=vh*cr;
+sx=(vw-sw)/2;
+sy=0;
 }else{
-sw = vw;
-sh = vw/cr;
-sx = 0;
-sy = (vh-sh)/2;
+sw=vw;
+sh=vw/cr;
+sx=0;
+sy=(vh-sh)/2;
 }
 
 ctx.save();
@@ -369,7 +348,7 @@ ctx.drawImage(renderer.domElement,0,0,cw,ch);
 
 out.toBlob(async(blob)=>{
 
-const file = new File([blob],"ar-selfie.jpg",{type:"image/jpeg"});
+const file=new File([blob],"ar-selfie.jpg",{type:"image/jpeg"});
 
 if(navigator.canShare && navigator.canShare({files:[file]})){
 try{
@@ -381,8 +360,8 @@ return;
 }catch(e){}
 }
 
-const url = URL.createObjectURL(blob);
-const a = document.createElement("a");
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
 a.href=url;
 a.download="ar-selfie.jpg";
 a.click();
@@ -392,7 +371,6 @@ setTimeout(()=>URL.revokeObjectURL(url),1000);
 },"image/jpeg",0.96);
 }
 
-/* RESET */
 function resetApp(){
 location.reload();
 }
@@ -405,7 +383,7 @@ window.addEventListener("resize",()=>{
 if(renderer) renderer.setSize(innerWidth,innerHeight);
 
 if(camera){
-camera.aspect = innerWidth/innerHeight;
+camera.aspect=innerWidth/innerHeight;
 camera.updateProjectionMatrix();
 }
 
