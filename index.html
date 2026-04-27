@@ -78,7 +78,7 @@ display:none;
 cursor:pointer;
 }
 
-/* BOTÃO FOTO NOVO */
+/* BOTÃO FOTO */
 #captureBtn{
 position:fixed;
 bottom:26px;
@@ -98,6 +98,7 @@ cursor:pointer;
 transform:translateX(-50%) scale(.92);
 }
 
+/* aro vermelho */
 #captureBtn .outer-ring{
 position:absolute;
 inset:0;
@@ -105,17 +106,19 @@ border-radius:50%;
 background:#ff0000;
 }
 
+/* branco fino */
 #captureBtn .outer-ring::after{
 content:"";
 position:absolute;
-inset:10px;
+inset:7px;
 border-radius:50%;
 background:#fff;
 }
 
+/* bola interna maior */
 #captureBtn .inner-red{
 position:absolute;
-inset:22px;
+inset:12px;
 border-radius:50%;
 background:#ff0000;
 }
@@ -233,7 +236,7 @@ await scanAR.stop();
 
 app.innerHTML = "";
 
-/* selfie camera */
+/* selfie */
 selfieVideo = document.createElement("video");
 selfieVideo.autoplay = true;
 selfieVideo.playsInline = true;
@@ -280,10 +283,10 @@ camera.position.z = 9;
 const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.4);
 scene.add(light);
 
-/* personagem esquerda */
+/* PERSONAGEM MAIS DIREITA E MAIS BAIXO */
 scene.add(mascot);
 mascot.scale.set(1.65,1.65,1.65);
-mascot.position.set(-1.55,-0.35,0);
+mascot.position.set(-0.75,-1.10,0);
 
 captureBtn.style.display="block";
 resetBtn.style.display="block";
@@ -298,7 +301,8 @@ requestAnimationFrame(animateSelfie);
 
 if(!selfieMode) return;
 
-mascot.position.y = -0.35 + Math.sin(Date.now()*0.002)*0.05;
+mascot.position.y =
+-1.10 + Math.sin(Date.now()*0.002)*0.04;
 
 renderer.render(scene,camera);
 }
@@ -307,6 +311,7 @@ renderer.render(scene,camera);
 function flash(){
 
 const el = document.getElementById("flash");
+
 el.style.transition="none";
 el.style.opacity="0.95";
 
