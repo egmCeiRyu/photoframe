@@ -305,92 +305,89 @@ async function takePhoto(){
 
 flash();
 
-/* usa resolução real da câmera */
-const vw = selfieVideo.videoWidth;
-const vh = selfieVideo.videoHeight;
+const out=document.createElement("canvas");
+out.width=innerWidth * 3;
+out.height=innerHeight * 3;
 
-/* canvas final */
-const out = document.createElement("canvas");
-out.width = vw;
-out.height = vh;
+const ctx=out.getContext("2d");
 
-const ctx = out.getContext("2d");
+const vw=selfieVideo.videoWidth;
+const vh=selfieVideo.videoHeight;
+const cw=out.width;
+const ch=out.height;
 
-/* proporção preview */
-const screenRatio = innerWidth / innerHeight;
-const videoRatio = vw / vh;
+const vr=vw/vh;
+const cr=cw/ch;
 
-let sx, sy, sw, sh;
+let sx,sy,sw,sh;
 
-if(videoRatio > screenRatio){
-
-sh = vh;
-sw = vh * screenRatio;
-sx = (vw - sw) / 2;
-sy = 0;
-
+if(vr>cr){
+sh=vh;
+sw=vh*cr;
+sx=(vw-sw)/2;
+sy=0;
 }else{
-
-sw = vw;
-sh = vw / screenRatio;
-sx = 0;
-sy = (vh - sh) / 2;
-
+sw=vw;
+sh=vw/cr;
+sx=0;
+sy=(vh-sh)/2;
 }
 
-/* selfie espelhada */
 ctx.save();
 ctx.scale(-1,1);
 
 ctx.drawImage(
 selfieVideo,
 sx,sy,sw,sh,
--vw,0,vw,vh
+-cw,0,cw,ch
 );
 
 ctx.restore();
 
-/* personagem */
-ctx.drawImage(
-renderer.domElement,
-0,0,vw,vh
-);
+ctx.drawImage(renderer.domElement,0,0,cw,ch);
 
-/* salvar máxima qualidade */
 out.toBlob(async(blob)=>{
 
-const file = new File(
-[blob],
-"ar-selfie-hd.jpg",
-{type:"image/jpeg"}
-);
+const file=new File([blob],"ar-selfie.jpg",{type:"image/jpeg"});
 
 if(navigator.canShare && navigator.canShare({files:[file]})){
-
 try{
 await navigator.share({
 files:[file],
-title:"AR Photo HD"
+title:"AR Photo"
 });
 return;
 }catch(e){}
-
 }
 
-const url = URL.createObjectURL(blob);
-
-const a = document.createElement("a");
-a.href = url;
-a.download = "ar-selfie-hd.jpg";
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
+a.href=url;
+a.download="ar-selfie.jpg";
 a.click();
 
-setTimeout(()=>{
-URL.revokeObjectURL(url);
-},1000);
+setTimeout(()=>URL.revokeObjectURL(url),1000);
 
-},"image/jpeg",0.98);
-
+},"image/jpeg",1.0);
 }
+
+function resetApp(){
+location.reload();
+}
+
+captureBtn.addEventListener("click",takePhoto);
+resetBtn.addEventListener("click",resetApp);
+
+window.addEventListener("resize",()=>{
+
+if(renderer) renderer.setSize(innerWidth,innerHeight);
+
+if(camera){
+camera.aspect=innerWidth/innerHeight;
+camera.updateProjectionMatrix();
+}
+
+});
 </script>
 
 </body>
