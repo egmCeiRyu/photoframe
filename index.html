@@ -231,8 +231,8 @@ app.appendChild(selfieVideo);
 const stream = await navigator.mediaDevices.getUserMedia({
 video:{
 facingMode:"user",
-width:{ideal:1280},
-height:{ideal:720}
+width:{ideal:2560},
+height:{ideal:1440}
 },
 audio:false
 });
@@ -305,89 +305,92 @@ async function takePhoto(){
 
 flash();
 
-const out=document.createElement("canvas");
-out.width=innerWidth * 3;
-out.height=innerHeight * 3;
+/* usa resolução real da câmera */
+const vw = selfieVideo.videoWidth;
+const vh = selfieVideo.videoHeight;
 
-const ctx=out.getContext("2d");
+/* canvas final */
+const out = document.createElement("canvas");
+out.width = vw;
+out.height = vh;
 
-const vw=selfieVideo.videoWidth;
-const vh=selfieVideo.videoHeight;
-const cw=out.width;
-const ch=out.height;
+const ctx = out.getContext("2d");
 
-const vr=vw/vh;
-const cr=cw/ch;
+/* proporção preview */
+const screenRatio = innerWidth / innerHeight;
+const videoRatio = vw / vh;
 
-let sx,sy,sw,sh;
+let sx, sy, sw, sh;
 
-if(vr>cr){
-sh=vh;
-sw=vh*cr;
-sx=(vw-sw)/2;
-sy=0;
+if(videoRatio > screenRatio){
+
+sh = vh;
+sw = vh * screenRatio;
+sx = (vw - sw) / 2;
+sy = 0;
+
 }else{
-sw=vw;
-sh=vw/cr;
-sx=0;
-sy=(vh-sh)/2;
+
+sw = vw;
+sh = vw / screenRatio;
+sx = 0;
+sy = (vh - sh) / 2;
+
 }
 
+/* selfie espelhada */
 ctx.save();
 ctx.scale(-1,1);
 
 ctx.drawImage(
 selfieVideo,
 sx,sy,sw,sh,
--cw,0,cw,ch
+-vw,0,vw,vh
 );
 
 ctx.restore();
 
-ctx.drawImage(renderer.domElement,0,0,cw,ch);
+/* personagem */
+ctx.drawImage(
+renderer.domElement,
+0,0,vw,vh
+);
 
+/* salvar máxima qualidade */
 out.toBlob(async(blob)=>{
 
-const file=new File([blob],"ar-selfie.jpg",{type:"image/jpeg"});
+const file = new File(
+[blob],
+"ar-selfie-hd.jpg",
+{type:"image/jpeg"}
+);
 
 if(navigator.canShare && navigator.canShare({files:[file]})){
+
 try{
 await navigator.share({
 files:[file],
-title:"AR Photo"
+title:"AR Photo HD"
 });
 return;
 }catch(e){}
+
 }
 
-const url=URL.createObjectURL(blob);
-const a=document.createElement("a");
-a.href=url;
-a.download="ar-selfie.jpg";
+const url = URL.createObjectURL(blob);
+
+const a = document.createElement("a");
+a.href = url;
+a.download = "ar-selfie-hd.jpg";
 a.click();
 
-setTimeout(()=>URL.revokeObjectURL(url),1000);
+setTimeout(()=>{
+URL.revokeObjectURL(url);
+},1000);
 
-},"image/jpeg",1.0);
+},"image/jpeg",0.98);
+
 }
-
-function resetApp(){
-location.reload();
-}
-
-captureBtn.addEventListener("click",takePhoto);
-resetBtn.addEventListener("click",resetApp);
-
-window.addEventListener("resize",()=>{
-
-if(renderer) renderer.setSize(innerWidth,innerHeight);
-
-if(camera){
-camera.aspect=innerWidth/innerHeight;
-camera.updateProjectionMatrix();
-}
-
-});
 </script>
 
 </body>
