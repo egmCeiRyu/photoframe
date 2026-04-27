@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
 <title>MindAR Anime Mascot Photo Frame</title>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
@@ -11,39 +11,58 @@
 <style>
 html, body {
   margin: 0;
+  padding: 0;
   overflow: hidden;
-  font-family: sans-serif;
-}
-
-#ui {
-  position: fixed;
-  bottom: 30px;
   width: 100%;
-  display: flex;
-  justify-content: center;
-  z-index: 10;
-}
-
-button {
-  padding: 14px 24px;
-  border: none;
-  border-radius: 12px;
-  font-size: 18px;
-  background: #ff4fa0;
-  color: white;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  height: 100%;
+  font-family: sans-serif;
+  background: #000;
 }
 
 #title {
   position: fixed;
-  top: 15px;
+  top: 16px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #fff;
+  font-size: 22px;
+  font-weight: bold;
+  z-index: 20;
+  text-shadow: 0 2px 6px rgba(0,0,0,.7);
+}
+
+#ui {
+  position: fixed;
+  bottom: 28px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  z-index: 20;
+}
+
+#captureBtn {
+  border: none;
+  border-radius: 14px;
+  padding: 14px 28px;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  background: linear-gradient(135deg,#ff5aa8,#ff7fd0);
+  box-shadow: 0 8px 18px rgba(0,0,0,.25);
+}
+
+#guide {
+  position: fixed;
+  bottom: 90px;
+  left: 0;
   width: 100%;
   text-align: center;
   color: white;
-  font-size: 20px;
-  font-weight: bold;
-  z-index: 10;
-  text-shadow: 0 2px 5px black;
+  font-size: 14px;
+  z-index: 20;
+  text-shadow: 0 2px 6px rgba(0,0,0,.7);
 }
 </style>
 </head>
@@ -51,62 +70,74 @@ button {
 <body>
 
 <div id="title">AR Anime Mascot Photo Frame</div>
+<div id="guide">マーカーをカメラに映してください</div>
 
 <div id="ui">
-  <button onclick="takePhoto()">📸 撮影</button>
+  <button id="captureBtn">📸 撮影</button>
 </div>
 
 <script>
-const start = async () => {
+let renderer, scene, camera, mascot;
+
+async function startAR() {
 
   const mindarThree = new window.MINDAR.IMAGE.MindARThree({
     container: document.body,
     imageTargetSrc: "./targets.mind"
   });
 
-  const {renderer, scene, camera} = mindarThree;
+  renderer = mindarThree.renderer;
+  scene = mindarThree.scene;
+  camera = mindarThree.camera;
 
-  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.2);
   scene.add(light);
 
   const anchor = mindarThree.addAnchor(0);
 
-  // Load mascot image
-  const textureLoader = new THREE.TextureLoader();
-  const texture = await textureLoader.loadAsync(
-    "https://i.imgur.com/9Xn4K9T.png"
+  const loader = new THREE.TextureLoader();
+
+  const texture = await loader.loadAsync(
+    "./anime-mascot.png"
   );
 
-  const geometry = new THREE.PlaneGeometry(1, 1.8);
+  const geometry = new THREE.PlaneGeometry(1.1, 2.4);
+
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     transparent: true
   });
 
-  const mascot = new THREE.Mesh(geometry, material);
-  mascot.position.set(0, 0.9, 0);
+  mascot = new THREE.Mesh(geometry, material);
+  mascot.position.set(0, 1.15, 0);
+
   anchor.group.add(mascot);
 
   await mindarThree.start();
 
   renderer.setAnimationLoop(() => {
 
-    // Always face camera
-    mascot.lookAt(camera.position);
+    if (mascot) {
+      mascot.lookAt(camera.position);
+    }
 
     renderer.render(scene, camera);
   });
-};
-
-start();
+}
 
 function takePhoto() {
   const canvas = document.querySelector("canvas");
+  if (!canvas) return;
+
   const link = document.createElement("a");
   link.download = "ar-photo.png";
   link.href = canvas.toDataURL("image/png");
   link.click();
 }
+
+document.getElementById("captureBtn").addEventListener("click", takePhoto);
+
+startAR();
 </script>
 
 </body>
