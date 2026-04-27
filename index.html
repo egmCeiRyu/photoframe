@@ -269,7 +269,7 @@ scene.add(mascot);
 
 /* 50% MENOR */
 mascot.scale.set(0.70,0.70,0.70);
-mascot.position.set(0.95,3,0);
+mascot.position.set(0.95,1,0);
 
 captureBtn.style.display="block";
 resetBtn.style.display="block";
@@ -284,7 +284,7 @@ requestAnimationFrame(animateSelfie);
 if(!selfieMode) return;
 
 mascot.position.y=
--0.1 + Math.sin(Date.now()*0.002)*0.04;
+-1 + Math.sin(Date.now()*0.002)*0.04;
 
 renderer.render(scene,camera);
 }
