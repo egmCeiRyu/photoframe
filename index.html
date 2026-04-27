@@ -306,8 +306,8 @@ async function takePhoto(){
 flash();
 
 const out=document.createElement("canvas");
-out.width=innerWidth;
-out.height=innerHeight;
+out.width=innerWidth * 2;
+out.height=innerHeight * 2;
 
 const ctx=out.getContext("2d");
 
