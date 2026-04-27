@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no">
-<title>AR Scan to Selfie Mascot</title>
+<title>ARフォトフレーム</title>
 
 <script src="https://unpkg.com/three@0.150.1/build/three.min.js"></script>
 <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
@@ -16,7 +16,7 @@ width:100%;
 height:100%;
 overflow:hidden;
 background:#000;
-font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
 }
 
 #app{
@@ -34,19 +34,6 @@ height:100%;
 object-fit:cover;
 }
 
-#guide{
-position:fixed;
-top:18px;
-left:15px;
-right:15px;
-z-index:20;
-text-align:center;
-color:#fff;
-font-size:17px;
-font-weight:700;
-text-shadow:0 2px 8px rgba(0,0,0,.7);
-}
-
 #loading{
 position:fixed;
 inset:0;
@@ -59,36 +46,51 @@ font-size:18px;
 z-index:100;
 }
 
+#guide{
+position:fixed;
+top:18px;
+left:15px;
+right:15px;
+z-index:30;
+text-align:center;
+color:#fff;
+font-size:17px;
+font-weight:700;
+text-shadow:0 2px 8px rgba(0,0,0,.75);
+padding:0 8px;
+}
+
 #captureBtn,#resetBtn{
 position:fixed;
-z-index:30;
+z-index:40;
 border:none;
 color:#fff;
+cursor:pointer;
 }
 
 #captureBtn{
 bottom:24px;
 left:50%;
 transform:translateX(-50%);
-width:86px;
-height:86px;
+width:88px;
+height:88px;
 border-radius:50%;
 font-size:34px;
 background:#4cc9f0;
-box-shadow:0 0 30px rgba(76,201,240,.8);
+box-shadow:0 0 30px rgba(76,201,240,.85);
 display:none;
 }
 
 #resetBtn{
 bottom:36px;
-left:24px;
-width:60px;
-height:60px;
+left:22px;
+width:62px;
+height:62px;
 border-radius:50%;
 font-size:28px;
 background:rgba(255,255,255,.18);
-display:none;
 backdrop-filter:blur(8px);
+display:none;
 }
 
 #flash{
@@ -97,7 +99,7 @@ inset:0;
 background:#fff;
 opacity:0;
 pointer-events:none;
-z-index:50;
+z-index:90;
 }
 </style>
 </head>
@@ -115,16 +117,27 @@ z-index:50;
 
 <script>
 const app = document.getElementById("app");
+const loading = document.getElementById("loading");
+const guide = document.getElementById("guide");
+const captureBtn = document.getElementById("captureBtn");
+const resetBtn = document.getElementById("resetBtn");
 
 let scanAR;
-let renderer, scene, camera;
-let selfieVideo;
+let renderer;
+let scene;
+let camera;
 let mascot;
+let selfieVideo;
 let selfieMode = false;
 
+/* =========================
+   START
+========================= */
 window.addEventListener("load", startScanner);
 
-/* ETAPA 1 */
+/* =========================
+   STEP 1 - SCAN MARKER
+========================= */
 async function startScanner(){
 
 try{
@@ -144,22 +157,26 @@ renderer = scanAR.renderer;
 scene = scanAR.scene;
 camera = scanAR.camera;
 
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
 
 const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.2);
 scene.add(light);
 
+/* character image */
 const texture = await new THREE.TextureLoader().loadAsync("./anime-mascot.png");
 texture.encoding = THREE.sRGBEncoding;
 
-mascot = new THREE.Mesh(
-new THREE.PlaneGeometry(1.8,3.5),
-new THREE.MeshBasicMaterial({
+const material = new THREE.MeshBasicMaterial({
 map:texture,
 transparent:true,
-alphaTest:0.35
-})
+alphaTest:0.35,
+side:THREE.DoubleSide
+});
+
+mascot = new THREE.Mesh(
+new THREE.PlaneGeometry(1.8,3.5),
+material
 );
 
 mascot.position.set(0,1.2,0);
@@ -167,36 +184,44 @@ mascot.position.set(0,1.2,0);
 const anchor = scanAR.addAnchor(0);
 anchor.group.add(mascot);
 
+/* marker detected */
 anchor.onTargetFound = async ()=>{
 await enterSelfieMode();
 };
 
 await scanAR.start();
 
-document.getElementById("loading").style.display="none";
+loading.style.display = "none";
 
 renderer.setAnimationLoop(()=>{
 renderer.render(scene,camera);
 });
 
-}catch(e){
-document.getElementById("loading").innerHTML="カメラエラー";
-}
+}catch(err){
+
+loading.innerHTML = "カメラエラー";
+console.error(err);
+
 }
 
-/* ETAPA 2 */
+}
+
+/* =========================
+   STEP 2 - SELFIE MODE
+========================= */
 async function enterSelfieMode(){
 
 if(selfieMode) return;
 selfieMode = true;
 
-document.getElementById("guide").innerHTML =
-"② キャラクターと一緒に写真を撮ってください";
+guide.innerHTML = "② キャラクターと一緒に写真を撮ってください";
 
 await scanAR.stop();
 
+/* clear old camera */
 app.innerHTML = "";
 
+/* selfie camera */
 selfieVideo = document.createElement("video");
 selfieVideo.autoplay = true;
 selfieVideo.playsInline = true;
@@ -216,21 +241,24 @@ audio:false
 selfieVideo.srcObject = stream;
 await selfieVideo.play();
 
+/* three overlay */
 renderer = new THREE.WebGLRenderer({
 alpha:true,
 antialias:true,
 preserveDrawingBuffer:true
 });
 
-renderer.setSize(innerWidth,innerHeight);
-renderer.domElement.style.pointerEvents="none";
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.domElement.style.pointerEvents = "none";
+
 app.appendChild(renderer.domElement);
 
 scene = new THREE.Scene();
 
 camera = new THREE.PerspectiveCamera(
 45,
-innerWidth/innerHeight,
+window.innerWidth/window.innerHeight,
 0.1,
 100
 );
@@ -240,96 +268,132 @@ camera.position.z = 5;
 const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.2);
 scene.add(light);
 
+/* place character */
 scene.add(mascot);
 mascot.position.set(1.6,-1.0,0);
 
+captureBtn.style.display = "block";
+resetBtn.style.display = "block";
+
 animateSelfie();
 
-document.getElementById("captureBtn").style.display="block";
-document.getElementById("resetBtn").style.display="block";
 }
 
+/* =========================
+   SELFIE LOOP
+========================= */
 function animateSelfie(){
 
 requestAnimationFrame(animateSelfie);
 
 if(!selfieMode) return;
 
+if(mascot){
 mascot.lookAt(camera.position);
-renderer.render(scene,camera);
 }
 
-/* FOTO */
+renderer.render(scene,camera);
+
+}
+
+/* =========================
+   FLASH
+========================= */
 function flash(){
 
 const el = document.getElementById("flash");
 
-el.style.transition="none";
-el.style.opacity="0.95";
+el.style.transition = "none";
+el.style.opacity = "0.95";
 
 setTimeout(()=>{
-el.style.transition="opacity .35s ease";
-el.style.opacity="0";
+el.style.transition = "opacity .35s ease";
+el.style.opacity = "0";
 },40);
+
 }
 
+/* =========================
+   TAKE PHOTO
+========================= */
 async function takePhoto(){
 
 flash();
 
 const out = document.createElement("canvas");
-out.width = innerWidth;
-out.height = innerHeight;
+out.width = window.innerWidth;
+out.height = window.innerHeight;
 
 const ctx = out.getContext("2d");
 
+/* selfie image */
 ctx.save();
 ctx.scale(-1,1);
 ctx.drawImage(selfieVideo,-out.width,0,out.width,out.height);
 ctx.restore();
 
+/* character overlay */
 ctx.drawImage(renderer.domElement,0,0,out.width,out.height);
 
+/* save/share */
 out.toBlob(async(blob)=>{
 
-const file = new File([blob],"ar-selfie.jpg",{type:"image/jpeg"});
+const file = new File(
+[blob],
+"ar-selfie.jpg",
+{type:"image/jpeg"}
+);
 
+/* iPhone share sheet */
 if(navigator.canShare && navigator.canShare({files:[file]})){
+
 try{
 await navigator.share({
 files:[file],
-title:"AR Selfie"
+title:"AR Photo"
 });
 return;
 }catch(e){}
+
 }
 
+/* fallback */
 const url = URL.createObjectURL(blob);
+
 const a = document.createElement("a");
 a.href = url;
 a.download = "ar-selfie.jpg";
 a.click();
 
-setTimeout(()=>URL.revokeObjectURL(url),1000);
+setTimeout(()=>{
+URL.revokeObjectURL(url);
+},1000);
 
 },"image/jpeg",0.95);
+
 }
 
+/* =========================
+   RESET
+========================= */
 function resetApp(){
 location.reload();
 }
 
-document.getElementById("captureBtn").addEventListener("click",takePhoto);
-document.getElementById("resetBtn").addEventListener("click",resetApp);
+/* =========================
+   EVENTS
+========================= */
+captureBtn.addEventListener("click",takePhoto);
+resetBtn.addEventListener("click",resetApp);
 
 window.addEventListener("resize",()=>{
 
 if(renderer){
-renderer.setSize(innerWidth,innerHeight);
+renderer.setSize(window.innerWidth,window.innerHeight);
 }
 
 if(camera){
-camera.aspect = innerWidth/innerHeight;
+camera.aspect = window.innerWidth/window.innerHeight;
 camera.updateProjectionMatrix();
 }
 
