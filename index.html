@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no">
 <title>AR Anime Mascot Photo Frame</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r150/three.min.js"></script>
+<!-- THREE FIRST -->
+<script src="https://unpkg.com/three@0.150.1/build/three.min.js"></script>
+
+<!-- MINDAR SECOND -->
 <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
 
 <style>
@@ -77,6 +80,8 @@ align-items:center;
 justify-content:center;
 z-index:99;
 font-size:18px;
+text-align:center;
+padding:20px;
 }
 </style>
 </head>
@@ -91,15 +96,16 @@ font-size:18px;
 <button id="captureBtn">📸 撮影</button>
 
 <script>
-async function startAR(){
-try{
+window.addEventListener("load", async () => {
+
+try {
 
 const mindarThree = new window.MINDAR.IMAGE.MindARThree({
 container: document.querySelector("#ar-container"),
-imageTargetSrc:"./targets.mind",
-uiScanning:false,
-uiLoading:false,
-uiError:false
+imageTargetSrc: "./targets.mind",
+uiScanning: false,
+uiLoading: false,
+uiError: false
 });
 
 const {renderer, scene, camera} = mindarThree;
@@ -111,6 +117,7 @@ const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.2);
 scene.add(light);
 
 const loader = new THREE.TextureLoader();
+
 const texture = await loader.loadAsync("./anime-mascot.png");
 
 const mascot = new THREE.Mesh(
@@ -128,23 +135,26 @@ anchor.group.add(mascot);
 
 await mindarThree.start();
 
-document.getElementById("loading").style.display="none";
+document.getElementById("loading").style.display = "none";
 
-renderer.setAnimationLoop(()=>{
+renderer.setAnimationLoop(() => {
 mascot.lookAt(camera.position);
-renderer.render(scene,camera);
+renderer.render(scene, camera);
 });
 
-}catch(error){
+} catch(error){
+
 document.getElementById("loading").innerHTML =
-"Failed to open camera.<br>Allow permission and reload.";
+"Failed to start AR.<br>Check camera permission,<br>targets.mind and image files.";
+
 console.error(error);
-}
+
 }
 
-window.addEventListener("load", startAR);
+});
 
-document.getElementById("captureBtn").addEventListener("click",()=>{
+document.getElementById("captureBtn").addEventListener("click", () => {
+
 const canvas = document.querySelector("canvas");
 if(!canvas) return;
 
@@ -152,6 +162,7 @@ const link = document.createElement("a");
 link.download = "ar-photo.png";
 link.href = canvas.toDataURL("image/png");
 link.click();
+
 });
 </script>
 
