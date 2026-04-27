@@ -1,105 +1,161 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MindAR Debug</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no" />
+<title>AR Photo Frame Auto Start</title>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
 
 <style>
-html,body{
-margin:0;
-width:100%;
-height:100%;
-overflow:hidden;
-background:#000;
-color:#fff;
-font-family:sans-serif;
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: sans-serif;
 }
-#ar-container{
-position:fixed;
-inset:0;
+
+#ar-container {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
-#panel{
-position:fixed;
-top:20px;
-left:20px;
-right:20px;
-z-index:50;
+
+#title {
+  position: fixed;
+  top: 14px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #fff;
+  font-size: 22px;
+  font-weight: bold;
+  z-index: 20;
+  text-shadow: 0 2px 8px rgba(0,0,0,.7);
 }
-button{
-padding:14px 24px;
-font-size:18px;
+
+#guide {
+  position: fixed;
+  bottom: 95px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #fff;
+  font-size: 15px;
+  z-index: 20;
+  text-shadow: 0 2px 8px rgba(0,0,0,.7);
 }
-#log{
-margin-top:15px;
-font-size:14px;
-white-space:pre-line;
+
+#captureBtn {
+  position: fixed;
+  bottom: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 28px;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  background: linear-gradient(135deg,#ff5ca9,#ff84d2);
+}
+
+#loading {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+  font-size: 18px;
 }
 </style>
 </head>
+
 <body>
 
 <div id="ar-container"></div>
 
-<div id="panel">
-<button onclick="boot()">START AR</button>
-<div id="log">Ready...</div>
-</div>
+<div id="loading">Opening Camera...</div>
+<div id="title">AR Anime Mascot Photo Frame</div>
+<div id="guide">マーカーをカメラに映してください</div>
+<button id="captureBtn">📸 撮影</button>
 
 <script>
-function log(msg){
-document.getElementById("log").innerText += "\n" + msg;
+let renderer, scene, camera, mascot;
+
+async function startAR() {
+  try {
+    const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+      container: document.querySelector("#ar-container"),
+      imageTargetSrc: "./targets.mind",
+      uiLoading: false,
+      uiScanning: false,
+      uiError: false
+    });
+
+    renderer = mindarThree.renderer;
+    scene = mindarThree.scene;
+    camera = mindarThree.camera;
+
+    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.2);
+    scene.add(light);
+
+    const anchor = mindarThree.addAnchor(0);
+
+    const loader = new THREE.TextureLoader();
+    const texture = await loader.loadAsync("./anime-mascot.png");
+
+    mascot = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.1, 2.4),
+      new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true
+      })
+    );
+
+    mascot.position.set(0, 1.15, 0);
+    anchor.group.add(mascot);
+
+    await mindarThree.start();
+
+    document.getElementById("loading").style.display = "none";
+
+    renderer.setAnimationLoop(() => {
+      if (mascot) mascot.lookAt(camera.position);
+      renderer.render(scene, camera);
+    });
+
+  } catch (error) {
+    document.getElementById("loading").innerHTML =
+      "Camera failed.<br>Please allow permission and reload.";
+    console.error(error);
+  }
 }
 
-async function boot(){
-try{
-log("Clicked");
+function takePhoto() {
+  const canvas = document.querySelector("canvas");
+  if (!canvas) return;
 
-log("Creating MindAR...");
-const mindarThree = new window.MINDAR.IMAGE.MindARThree({
-container: document.querySelector("#ar-container"),
-imageTargetSrc:"./targets.mind"
+  const link = document.createElement("a");
+  link.download = "ar-photo.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+document.getElementById("captureBtn").addEventListener("click", takePhoto);
+
+window.addEventListener("load", () => {
+  startAR();
 });
-
-log("Loading renderer...");
-const {renderer, scene, camera} = mindarThree;
-
-log("Loading image...");
-const loader = new THREE.TextureLoader();
-
-const texture = await loader.loadAsync("./anime-mascot.png");
-
-log("Creating mesh...");
-const mesh = new THREE.Mesh(
-new THREE.PlaneGeometry(1,2),
-new THREE.MeshBasicMaterial({
-map:texture,
-transparent:true
-})
-);
-
-const anchor = mindarThree.addAnchor(0);
-anchor.group.add(mesh);
-
-log("Starting camera...");
-await mindarThree.start();
-
-log("SUCCESS");
-
-renderer.setAnimationLoop(()=>{
-mesh.lookAt(camera.position);
-renderer.render(scene,camera);
-});
-
-}catch(e){
-log("ERROR:");
-log(e.message);
-console.error(e);
-}
-}
 </script>
 
 </body>
