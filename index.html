@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no">
-<title>AR Scan Front &gt; Selfie</title>
+<title>AR Scan to Selfie Mascot</title>
 
 <script src="https://unpkg.com/three@0.150.1/build/three.min.js"></script>
 <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
@@ -19,12 +19,19 @@ background:#000;
 font-family:-apple-system,BlinkMacSystemFont,sans-serif;
 }
 
-#ar-container{position:fixed;inset:0;}
-#ui{
+#app{
 position:fixed;
 inset:0;
-pointer-events:none;
-z-index:50;
+overflow:hidden;
+background:#000;
+}
+
+video,canvas{
+position:fixed;
+inset:0;
+width:100%;
+height:100%;
+object-fit:cover;
 }
 
 #guide{
@@ -32,6 +39,7 @@ position:fixed;
 top:18px;
 left:15px;
 right:15px;
+z-index:20;
 text-align:center;
 color:#fff;
 font-size:17px;
@@ -47,13 +55,13 @@ align-items:center;
 justify-content:center;
 background:#000;
 color:#fff;
-z-index:100;
 font-size:18px;
+z-index:100;
 }
 
 #captureBtn,#resetBtn{
 position:fixed;
-pointer-events:auto;
+z-index:30;
 border:none;
 color:#fff;
 }
@@ -72,15 +80,15 @@ display:none;
 }
 
 #resetBtn{
-bottom:34px;
+bottom:36px;
 left:24px;
 width:60px;
 height:60px;
 border-radius:50%;
 font-size:28px;
 background:rgba(255,255,255,.18);
-backdrop-filter:blur(8px);
 display:none;
+backdrop-filter:blur(8px);
 }
 
 #flash{
@@ -89,36 +97,40 @@ inset:0;
 background:#fff;
 opacity:0;
 pointer-events:none;
-z-index:120;
+z-index:50;
 }
 </style>
 </head>
 <body>
 
-<div id="ar-container"></div>
+<div id="app"></div>
 
-<div id="ui">
-<div id="loading">Opening camera...</div>
-<div id="guide">1. Escaneie o marcador</div>
+<div id="loading">カメラを起動しています...</div>
+<div id="guide">① マーカーをスキャンしてください</div>
+
 <button id="captureBtn">📸</button>
 <button id="resetBtn">↺</button>
+
 <div id="flash"></div>
-</div>
 
 <script>
-let renderer,scene,camera,mindarThree;
-let mascot,anchor;
-let locked=false;
+const app = document.getElementById("app");
 
-window.addEventListener("load",startScanMode);
+let scanAR;
+let renderer, scene, camera;
+let selfieVideo;
+let mascot;
+let selfieMode = false;
 
-/* ETAPA 1 = CAMERA TRASEIRA PARA ESCANEAR */
-async function startScanMode(){
+window.addEventListener("load", startScanner);
+
+/* ETAPA 1 */
+async function startScanner(){
 
 try{
 
-mindarThree = new window.MINDAR.IMAGE.MindARThree({
-container:document.querySelector("#ar-container"),
+scanAR = new window.MINDAR.IMAGE.MindARThree({
+container: app,
 imageTargetSrc:"./targets.mind",
 uiScanning:false,
 uiLoading:false,
@@ -128,12 +140,11 @@ facingMode:{ideal:"environment"}
 }
 });
 
-renderer = mindarThree.renderer;
-scene = mindarThree.scene;
-camera = mindarThree.camera;
+renderer = scanAR.renderer;
+scene = scanAR.scene;
+camera = scanAR.camera;
 
-renderer.preserveDrawingBuffer = true;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 
 const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.2);
@@ -143,74 +154,57 @@ const texture = await new THREE.TextureLoader().loadAsync("./anime-mascot.png");
 texture.encoding = THREE.sRGBEncoding;
 
 mascot = new THREE.Mesh(
-new THREE.PlaneGeometry(1.2,2.5),
+new THREE.PlaneGeometry(1.8,3.5),
 new THREE.MeshBasicMaterial({
 map:texture,
 transparent:true,
-alphaTest:0.35,
-side:THREE.DoubleSide
+alphaTest:0.35
 })
 );
 
-mascot.position.set(0,1.15,0);
+mascot.position.set(0,1.2,0);
 
-anchor = mindarThree.addAnchor(0);
+const anchor = scanAR.addAnchor(0);
 anchor.group.add(mascot);
 
-/* detectou marcador */
 anchor.onTargetFound = async ()=>{
-
-if(locked) return;
-locked=true;
-
-/* salva posição mundial */
-mascot.updateMatrixWorld(true);
-
-const pos = new THREE.Vector3();
-const quat = new THREE.Quaternion();
-const scale = new THREE.Vector3();
-
-mascot.matrixWorld.decompose(pos,quat,scale);
-
-/* tira do marker */
-anchor.group.remove(mascot);
-scene.add(mascot);
-
-mascot.position.copy(pos);
-mascot.quaternion.copy(quat);
-mascot.scale.copy(scale);
-
-/* muda para selfie */
-await switchToSelfie();
-
+await enterSelfieMode();
 };
 
-await mindarThree.start();
+await scanAR.start();
 
 document.getElementById("loading").style.display="none";
 
 renderer.setAnimationLoop(()=>{
-
-if(mascot){
-mascot.lookAt(camera.position);
-}
-
 renderer.render(scene,camera);
-
 });
 
 }catch(e){
-document.getElementById("loading").innerHTML="Camera error";
-console.error(e);
+document.getElementById("loading").innerHTML="カメラエラー";
 }
 }
 
-/* ETAPA 2 = TROCA PARA SELFIE */
-async function switchToSelfie(){
+/* ETAPA 2 */
+async function enterSelfieMode(){
 
-const video = document.querySelector("video");
+if(selfieMode) return;
+selfieMode = true;
 
-const newStream = await navigator.mediaDevices.getUserMedia({
+document.getElementById("guide").innerHTML =
+"② キャラクターと一緒に写真を撮ってください";
+
+await scanAR.stop();
+
+app.innerHTML = "";
+
+selfieVideo = document.createElement("video");
+selfieVideo.autoplay = true;
+selfieVideo.playsInline = true;
+selfieVideo.muted = true;
+selfieVideo.style.transform = "scaleX(-1)";
+app.appendChild(selfieVideo);
+
+const stream = await navigator.mediaDevices.getUserMedia({
 video:{
 facingMode:"user",
 width:{ideal:1280},
@@ -219,30 +213,63 @@ height:{ideal:720}
 audio:false
 });
 
-/* para stream antiga */
-if(video.srcObject){
-video.srcObject.getTracks().forEach(t=>t.stop());
-}
+selfieVideo.srcObject = stream;
+await selfieVideo.play();
 
-video.srcObject = newStream;
-await video.play();
+renderer = new THREE.WebGLRenderer({
+alpha:true,
+antialias:true,
+preserveDrawingBuffer:true
+});
 
-video.style.transform="scaleX(-1)";
-video.style.objectFit="cover";
+renderer.setSize(innerWidth,innerHeight);
+renderer.domElement.style.pointerEvents="none";
+app.appendChild(renderer.domElement);
 
-document.getElementById("guide").innerHTML="2. Tire sua selfie";
+scene = new THREE.Scene();
+
+camera = new THREE.PerspectiveCamera(
+45,
+innerWidth/innerHeight,
+0.1,
+100
+);
+
+camera.position.z = 5;
+
+const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.2);
+scene.add(light);
+
+scene.add(mascot);
+mascot.position.set(1.6,-1.0,0);
+
+animateSelfie();
+
 document.getElementById("captureBtn").style.display="block";
 document.getElementById("resetBtn").style.display="block";
 }
 
+function animateSelfie(){
+
+requestAnimationFrame(animateSelfie);
+
+if(!selfieMode) return;
+
+mascot.lookAt(camera.position);
+renderer.render(scene,camera);
+}
+
 /* FOTO */
 function flash(){
-const f=document.getElementById("flash");
-f.style.transition="none";
-f.style.opacity="0.95";
+
+const el = document.getElementById("flash");
+
+el.style.transition="none";
+el.style.opacity="0.95";
+
 setTimeout(()=>{
-f.style.transition="opacity .35s ease";
-f.style.opacity="0";
+el.style.transition="opacity .35s ease";
+el.style.opacity="0";
 },40);
 }
 
@@ -250,25 +277,18 @@ async function takePhoto(){
 
 flash();
 
-renderer.render(scene,camera);
-
-const video = document.querySelector("video");
-const gl = renderer.domElement;
-
 const out = document.createElement("canvas");
-out.width = gl.width;
-out.height = gl.height;
+out.width = innerWidth;
+out.height = innerHeight;
 
 const ctx = out.getContext("2d");
 
-/* selfie espelhada */
 ctx.save();
 ctx.scale(-1,1);
-ctx.drawImage(video,-out.width,0,out.width,out.height);
+ctx.drawImage(selfieVideo,-out.width,0,out.width,out.height);
 ctx.restore();
 
-/* personagem */
-ctx.drawImage(gl,0,0,out.width,out.height);
+ctx.drawImage(renderer.domElement,0,0,out.width,out.height);
 
 out.toBlob(async(blob)=>{
 
@@ -286,8 +306,8 @@ return;
 
 const url = URL.createObjectURL(blob);
 const a = document.createElement("a");
-a.href=url;
-a.download="ar-selfie.jpg";
+a.href = url;
+a.download = "ar-selfie.jpg";
 a.click();
 
 setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -295,18 +315,24 @@ setTimeout(()=>URL.revokeObjectURL(url),1000);
 },"image/jpeg",0.95);
 }
 
-/* reset */
-function resetAll(){
+function resetApp(){
 location.reload();
 }
 
 document.getElementById("captureBtn").addEventListener("click",takePhoto);
-document.getElementById("resetBtn").addEventListener("click",resetAll);
+document.getElementById("resetBtn").addEventListener("click",resetApp);
 
 window.addEventListener("resize",()=>{
+
 if(renderer){
 renderer.setSize(innerWidth,innerHeight);
 }
+
+if(camera){
+camera.aspect = innerWidth/innerHeight;
+camera.updateProjectionMatrix();
+}
+
 });
 </script>
 
