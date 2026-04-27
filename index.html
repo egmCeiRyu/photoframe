@@ -57,6 +57,7 @@ color:#fff;
 font-size:17px;
 font-weight:700;
 text-shadow:0 2px 8px rgba(0,0,0,.75);
+line-height:1.5;
 padding:0 8px;
 }
 
@@ -72,10 +73,10 @@ cursor:pointer;
 bottom:24px;
 left:50%;
 transform:translateX(-50%);
-width:88px;
-height:88px;
+width:90px;
+height:90px;
 border-radius:50%;
-font-size:34px;
+font-size:36px;
 background:#4cc9f0;
 box-shadow:0 0 30px rgba(76,201,240,.85);
 display:none;
@@ -136,7 +137,7 @@ let selfieMode = false;
 window.addEventListener("load", startScanner);
 
 /* =========================
-   STEP 1 - SCAN MARKER
+   STEP 1: SCAN MARKER
 ========================= */
 async function startScanner(){
 
@@ -163,7 +164,6 @@ renderer.setSize(window.innerWidth,window.innerHeight);
 const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.2);
 scene.add(light);
 
-/* character image */
 const texture = await new THREE.TextureLoader().loadAsync("./anime-mascot.png");
 texture.encoding = THREE.sRGBEncoding;
 
@@ -184,7 +184,7 @@ mascot.position.set(0,1.2,0);
 const anchor = scanAR.addAnchor(0);
 anchor.group.add(mascot);
 
-/* marker detected */
+/* detect marker */
 anchor.onTargetFound = async ()=>{
 await enterSelfieMode();
 };
@@ -207,21 +207,22 @@ console.error(err);
 }
 
 /* =========================
-   STEP 2 - SELFIE MODE
+   STEP 2: SELFIE MODE
 ========================= */
 async function enterSelfieMode(){
 
 if(selfieMode) return;
 selfieMode = true;
 
-guide.innerHTML = "② キャラクターと一緒に写真を撮ってください";
+guide.innerHTML =
+"② キャラクターと一緒に写真を撮ってください";
 
 await scanAR.stop();
 
-/* clear old camera */
+/* clear old view */
 app.innerHTML = "";
 
-/* selfie camera */
+/* selfie video */
 selfieVideo = document.createElement("video");
 selfieVideo.autoplay = true;
 selfieVideo.playsInline = true;
@@ -241,7 +242,7 @@ audio:false
 selfieVideo.srcObject = stream;
 await selfieVideo.play();
 
-/* three overlay */
+/* 3D overlay */
 renderer = new THREE.WebGLRenderer({
 alpha:true,
 antialias:true,
@@ -268,7 +269,7 @@ camera.position.z = 5;
 const light = new THREE.HemisphereLight(0xffffff,0xbbbbff,1.2);
 scene.add(light);
 
-/* place character */
+/* place mascot */
 scene.add(mascot);
 mascot.position.set(1.6,-1.0,0);
 
@@ -297,7 +298,7 @@ renderer.render(scene,camera);
 }
 
 /* =========================
-   FLASH
+   FLASH EFFECT
 ========================= */
 function flash(){
 
@@ -326,14 +327,22 @@ out.height = window.innerHeight;
 
 const ctx = out.getContext("2d");
 
-/* selfie image */
+/* selfie layer */
 ctx.save();
 ctx.scale(-1,1);
-ctx.drawImage(selfieVideo,-out.width,0,out.width,out.height);
+ctx.drawImage(
+selfieVideo,
+-out.width,0,
+out.width,out.height
+);
 ctx.restore();
 
-/* character overlay */
-ctx.drawImage(renderer.domElement,0,0,out.width,out.height);
+/* mascot layer */
+ctx.drawImage(
+renderer.domElement,
+0,0,
+out.width,out.height
+);
 
 /* save/share */
 out.toBlob(async(blob)=>{
@@ -344,7 +353,7 @@ const file = new File(
 {type:"image/jpeg"}
 );
 
-/* iPhone share sheet */
+/* mobile share */
 if(navigator.canShare && navigator.canShare({files:[file]})){
 
 try{
@@ -357,7 +366,7 @@ return;
 
 }
 
-/* fallback */
+/* fallback download */
 const url = URL.createObjectURL(blob);
 
 const a = document.createElement("a");
@@ -393,7 +402,8 @@ renderer.setSize(window.innerWidth,window.innerHeight);
 }
 
 if(camera){
-camera.aspect = window.innerWidth/window.innerHeight;
+camera.aspect =
+window.innerWidth/window.innerHeight;
 camera.updateProjectionMatrix();
 }
 
