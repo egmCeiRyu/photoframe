@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
-<title>MindAR Anime Mascot Photo Frame</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no" />
+<title>AR Anime Mascot Photo Frame</title>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
@@ -12,16 +12,24 @@
 html, body {
   margin: 0;
   padding: 0;
-  overflow: hidden;
   width: 100%;
   height: 100%;
-  font-family: sans-serif;
+  overflow: hidden;
   background: #000;
+  font-family: sans-serif;
+}
+
+#ar-container {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 #title {
   position: fixed;
-  top: 16px;
+  top: 14px;
   left: 0;
   width: 100%;
   text-align: center;
@@ -29,12 +37,24 @@ html, body {
   font-size: 22px;
   font-weight: bold;
   z-index: 20;
-  text-shadow: 0 2px 6px rgba(0,0,0,.7);
+  text-shadow: 0 2px 8px rgba(0,0,0,.7);
+}
+
+#guide {
+  position: fixed;
+  bottom: 95px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #fff;
+  font-size: 15px;
+  z-index: 20;
+  text-shadow: 0 2px 8px rgba(0,0,0,.7);
 }
 
 #ui {
   position: fixed;
-  bottom: 28px;
+  bottom: 26px;
   left: 0;
   width: 100%;
   display: flex;
@@ -45,30 +65,33 @@ html, body {
 #captureBtn {
   border: none;
   border-radius: 14px;
-  padding: 14px 28px;
+  padding: 14px 30px;
   font-size: 18px;
   font-weight: bold;
-  color: white;
-  background: linear-gradient(135deg,#ff5aa8,#ff7fd0);
-  box-shadow: 0 8px 18px rgba(0,0,0,.25);
+  color: #fff;
+  background: linear-gradient(135deg,#ff5ca9,#ff84d2);
+  box-shadow: 0 8px 20px rgba(0,0,0,.25);
 }
 
-#guide {
+#loading {
   position: fixed;
-  bottom: 90px;
-  left: 0;
-  width: 100%;
-  text-align: center;
-  color: white;
-  font-size: 14px;
-  z-index: 20;
-  text-shadow: 0 2px 6px rgba(0,0,0,.7);
+  inset: 0;
+  background: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+  font-size: 18px;
 }
 </style>
 </head>
 
 <body>
 
+<div id="ar-container"></div>
+
+<div id="loading">Loading Camera...</div>
 <div id="title">AR Anime Mascot Photo Frame</div>
 <div id="guide">マーカーをカメラに映してください</div>
 
@@ -80,49 +103,59 @@ html, body {
 let renderer, scene, camera, mascot;
 
 async function startAR() {
+  try {
+    const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+      container: document.querySelector("#ar-container"),
+      imageTargetSrc: "./targets.mind",
+      uiScanning: false,
+      uiLoading: false,
+      uiError: false
+    });
 
-  const mindarThree = new window.MINDAR.IMAGE.MindARThree({
-    container: document.body,
-    imageTargetSrc: "./targets.mind"
-  });
+    renderer = mindarThree.renderer;
+    scene = mindarThree.scene;
+    camera = mindarThree.camera;
 
-  renderer = mindarThree.renderer;
-  scene = mindarThree.scene;
-  camera = mindarThree.camera;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
-  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.2);
-  scene.add(light);
+    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.2);
+    scene.add(light);
 
-  const anchor = mindarThree.addAnchor(0);
+    const anchor = mindarThree.addAnchor(0);
 
-  const loader = new THREE.TextureLoader();
+    const loader = new THREE.TextureLoader();
 
-  const texture = await loader.loadAsync(
-    "./anime-mascot.png"
-  );
+    const texture = await loader.loadAsync("./anime-mascot.png");
 
-  const geometry = new THREE.PlaneGeometry(1.1, 2.4);
+    const geometry = new THREE.PlaneGeometry(1.1, 2.4);
 
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true
-  });
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true
+    });
 
-  mascot = new THREE.Mesh(geometry, material);
-  mascot.position.set(0, 1.15, 0);
+    mascot = new THREE.Mesh(geometry, material);
+    mascot.position.set(0, 1.15, 0);
 
-  anchor.group.add(mascot);
+    anchor.group.add(mascot);
 
-  await mindarThree.start();
+    await mindarThree.start();
 
-  renderer.setAnimationLoop(() => {
+    document.getElementById("loading").style.display = "none";
 
-    if (mascot) {
-      mascot.lookAt(camera.position);
-    }
+    renderer.setAnimationLoop(() => {
+      if (mascot) {
+        mascot.lookAt(camera.position);
+      }
+      renderer.render(scene, camera);
+    });
 
-    renderer.render(scene, camera);
-  });
+  } catch (error) {
+    document.getElementById("loading").innerHTML =
+      "Camera start failed.<br>Please allow camera permission.";
+    console.error(error);
+  }
 }
 
 function takePhoto() {
@@ -136,6 +169,12 @@ function takePhoto() {
 }
 
 document.getElementById("captureBtn").addEventListener("click", takePhoto);
+
+window.addEventListener("resize", () => {
+  if (renderer) {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+});
 
 startAR();
 </script>
